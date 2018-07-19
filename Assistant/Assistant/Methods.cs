@@ -105,7 +105,8 @@ namespace Assistant
 
                 foreach (var item in class_)
                 {
-                    s.Append(item.Modifiers.ToFullString()).Append(" class ").Append(item.Identifier.ValueText).Append('{');
+                    
+                    s.Append(item.Modifiers.ToFullString()).Append(" class ").Append(item.Identifier.ValueText).Append(item.BaseList?.GetText()).Append('{');
                     var field_ = item.DescendantNodes().OfType<FieldDeclarationSyntax>();
                     if (field_.Any())
                     {

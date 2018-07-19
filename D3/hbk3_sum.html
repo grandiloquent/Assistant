@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+    </style>
+</head>
+
+<body>
+    <script src="d3.min.js"></script>
+    <script src="canvg.js"></script>
+    <canvas id="canvas"></canvas>
+    <script>
+        // set the dimensions of the canvas
+        var margin = {
+                top: 20,
+                right: 20,
+                bottom: 70,
+                left: 40
+            },
+            width = 600 - margin.left - margin.right,
+            height = 300 - margin.top - margin.bottom;
+
+
+        // set the ranges
+        var x = d3.scaleBand()
+            .rangeRound([0, width])
+            .padding(0.5);
+
+        var y = d3.scaleLinear().range([height, 0]);
+
+        // define the axis
+        var xAxis = d3.axisBottom(x);
+
+
+        var yAxis = d3.axisLeft(y)
+            .ticks(10);
+
+
+        // add the SVG element
+        var svg = d3.select("body").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform",
+                "translate(" + margin.left + "," + margin.top + ")");
+
+        var data = {
+            "10": 12.494997999199679,
+            "11": 12.463556851311953,
+            "9": 11.62036243068656,
+            "12": 11.564625850340136,
+            "8": 9.7353227005087746,
+            "13": 9.5366718115817761,
+            "14": 6.9556393986165892,
+            "7": 6.9156233922140284,
+            "15": 4.7719087635054018,
+            "6": 4.6475733150403018,
+            "16": 2.8811524609843939,
+            "5": 2.6982221460012576,
+            "4": 1.4177099411193048,
+            "17": 1.3734065054593265,
+            "18": 0.47876293374492657,
+            "3": 0.44446349968558851
+        }
+
+        // scale the range of the data
+        x.domain(Object.keys(data).map(function (d) {
+            return d
+        }));
+        y.domain([0, d3.max(d3.values(data))]);
+
+        // add axis
+
+        svg.append("g")
+
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + height + ")")
+
+            .call(xAxis)
+
+            .selectAll("text")
+            .style("font", " 12px sans-serif")
+            .style("fill", "#adadad")
+
+        //.attr("transform", "rotate(-90)");
+
+        svg.append("g")
+            .attr("class", "y axis")
+
+            .call(yAxis)
+
+
+            .append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 5)
+            .attr("dy", ".71em")
+            .style("text-anchor", "end")
+
+            .text("百分比")
+            .style("font", " 12px sans-serif")
+            .style("fill", "#adadad")
+
+        svg.selectAll("path")
+            .style("stroke", "#F2F2F2")
+            .style("fill", "none")
+            .style("shape-rendering", "crispEdges")
+        svg.selectAll("line")
+            .style("stroke", "#F2F2F2")
+            .style("fill", "none")
+            .style("shape-rendering", "crispEdges")
+        svg.selectAll(".tick text")
+            .style("font", " 12px sans-serif")
+            .style("fill", "#adadad")
+        // Add bar chart
+        var barheight;
+        var bar = svg.selectAll("bar")
+
+            .data(d3.keys(data))
+            .enter();
+
+        bar.append("rect")
+            .attr("class", "bar")
+            .style("fill", "#E91E63")
+            .attr("x", function (d) {
+                return x(d);
+            })
+            .attr("width", x.bandwidth())
+            .data(d3.values(data))
+            .attr("y", function (d) {
+
+                return y(d);
+            })
+            .attr("height", function (d) {
+                barheight = y(d);
+                return height - y(d);
+            })
+
+        // bar.data(d3.values(data)).append("text").text(function (d) {
+        //         return Math.round(d, 2)+"%";
+        //     }).data(d3.keys(data))
+        //     .attr("x", function (d) {
+        //         return x(d);
+        //     })
+        //     .data(d3.values(data))
+        //     .attr("y", function (d) {
+
+        //         return y(d)+12;
+        //     })
+
+        //     .attr("fill", "#fff")
+        //     .style("stroke-width", 1)
+        //     .style("font", " 5px sans-serif")
+        //     .style("z-index", "999999999")
+        //     .style("text-anchor", "start")
+
+        svg.append("text").attr("transform", "translate(0," + (height + 50) + ")").text("湖北快3 和值开奖统计")
+
+        canvg('canvas', document.querySelector('svg').outerHTML, {
+            ignoreMouse: true,
+            ignoreAnimation: true
+        });
+
+        // the canvas calls to output a png
+        var canvas = document.getElementById("canvas");
+        var img = canvas.toDataURL("image/jpeg");
+    </script>
+</body>
+
+</html>

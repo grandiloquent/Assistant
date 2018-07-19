@@ -10,13 +10,20 @@
     using System.Text;
     using System.Threading.Tasks;
     using System.Xml.Linq;
+
+    using System.Windows.Media;
+    using LiveCharts;
+    using LiveCharts.Wpf;
+
+
     class Lottery
     {
         private async static Task<string> GetHTML(string link, bool checkencoding = true)
         {
             var httpClient = new HttpClient(new HttpClientHandler()
             {
-                UseProxy = false,
+                UseProxy = true,
+                Proxy = new WebProxy("127.0.0.1", 58270),
                 UseDefaultCredentials = false,
                 AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
 
@@ -34,7 +41,7 @@
                 var contenttype = response.Content.Headers.First(h => h.Key.Equals("Content-Type"));
                 var rawencoding = contenttype.Value.First();
                 var bytes = await response.Content.ReadAsByteArrayAsync();
-                if (rawencoding.Contains("utf8") || rawencoding.Contains("UTF-8"))
+                if (System.Text.RegularExpressions.Regex.IsMatch(rawencoding, "utf", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
                 {
 
                     return Encoding.UTF8.GetString(bytes);
@@ -45,6 +52,57 @@
                 }
             }
             return null;
+
+        }
+
+
+
+        public async static void MarkSix()
+        {
+            var f = "marksix.txt".GetDesktopPath();
+            var url = "https://www.6hck.co/marksix/history/{0}?type=1";
+            for (int i = 2012; i <= 2018; i++)
+            {
+                var str = await GetHTML(string.Format(url, i));
+                var hd = new HtmlAgilityPack.HtmlDocument();
+                hd.LoadHtml(str);
+
+                var ns = hd.DocumentNode.SelectNodes("//table[@class='history_numbers']//tr");
+
+                var ls = new List<string>();
+                var sb = new StringBuilder();
+                foreach (var item in ns)
+                {
+                     
+                    if (item.GetAttributeValue("class", "") == "head") continue;
+                    for (int ic = 0; ic < item.ChildNodes.Count; ic++)
+                    {
+                        if (item.ChildNodes[ic].NodeType == HtmlAgilityPack.HtmlNodeType.Element && item.ChildNodes[ic].Name == "td")
+                        {
+                            if (ic== 1)
+                            {
+                                var vv = item.ChildNodes[ic].InnerText;
+                                var m = System.Text.RegularExpressions.Regex.Matches(vv, "[0-9\\-]+").Cast<System.Text.RegularExpressions.Match>().Select(iv => iv.Value);
+                                sb.Append(m.Last().Split('-').First()).Append('\t').Append(m.First()).Append('\t');
+                            }
+                            else if (item.ChildNodes[ic].GetAttributeValue("class", "") == "numbre")
+                            {
+                                var vv= item.ChildNodes[ic].InnerText;
+                                var m = System.Text.RegularExpressions.Regex.Split(vv.Trim(), "\\s+");
+                                sb.Append(m.Last()).Append('\t').Append(m.First()).Append('\n');
+
+                            }
+
+                        }
+                    }
+                    ls.Add(sb.ToString());
+
+                    sb.Clear();
+
+                }
+                f.AppendAllText(string.Join("", ls));
+                ls.Clear();
+            }
 
         }
 
@@ -385,7 +443,7 @@
 
         }
 
-        private static void AnalysisSum(Dictionary<int,int> dic,IEnumerable<int> ls, StringBuilder sb)
+        private static void AnalysisSum(Dictionary<int, int> dic, IEnumerable<int> ls, StringBuilder sb)
         {
             foreach (var item in dic.Keys)
             {
@@ -393,7 +451,7 @@
                 var b = 0;
 
                 var e = new List<KeyValuePair<int, int>>();
-                 
+
 
                 sb.AppendLine().AppendLine($"## 和值 {item} 开奖频率统计").AppendLine();
 
@@ -422,7 +480,7 @@
                     }
                 }
                 var f = new Dictionary<int, int>();
-               // var g = new Dictionary<int, int>();
+                // var g = new Dictionary<int, int>();
 
                 foreach (var iv in e)
                 {
@@ -454,7 +512,7 @@
                 //}
                 sb.AppendLine($"和值 {item} 连续期频率统计").AppendLine();
 
-                foreach (var iv in f.OrderByDescending(i=>i.Value))
+                foreach (var iv in f.OrderByDescending(i => i.Value))
                 {
                     sb.AppendLine($"- {item} 连续 {iv.Key} 期开奖 {iv.Value} 次");
 
@@ -512,6 +570,44 @@
             return (t, split.Sum());
         }
 
+
+        private static (Dictionary<string, int>, Dictionary<string, int>, Dictionary<int, int>) Statistics(IEnumerable<int> sumList)
+        {
+            var evenDictionary = new Dictionary<string, int>();
+
+
+            foreach (var sum in sumList)
+            {
+
+                if (sum > 10)
+                {
+                    if (sum % 2 == 0)
+                    {
+                        evenDictionary["大双"] += 1;
+                    }
+                    else
+                    {
+                        evenDictionary["大单"] += 1;
+
+                    }
+                }
+                else
+                {
+                    if (sum % 2 == 0)
+                    {
+                        evenDictionary["小双"] += 1;
+                    }
+                    else
+                    {
+                        evenDictionary["小单"] += 1;
+
+                    }
+                }
+            }
+
+            return (evenDictionary, null, null);
+        }
+
         public async static Task HuBeiK3()
         {
 
@@ -552,126 +648,178 @@
 
         public static void AnalysisHuBeiK3()
         {
-            var f = "hbk3.txt".GetCommandLinePath();
-            if (!File.Exists(f)) return;
+            //            var f = "hbk3.txt".GetCommandLinePath();
+            //            if (!File.Exists(f)) return;
 
 
 
-            var t = "hbk3_analysis.txt".GetCommandLinePath();
-            if (File.Exists(t))
+            //            var t = "hbk3_analysis.txt".GetCommandLinePath();
+            //            if (File.Exists(t))
+            //            {
+            //                File.Delete(t)
+            //;
+            //            }
+
+            //            var ls = f.ReadAllText().Split('\n').Where(i => i.IsReadable()).Select(i => i.Trim()).OrderBy(i => i);
+
+            //            var sumList = ls.Select(i => i.Split(new char[] { ' ' }, 2).Last().Split(',').Select(iv => int.Parse(iv)).Sum());
+
+
+            var cartesianChart1 = new LiveCharts.WinForms.CartesianChart();
+            cartesianChart1.Size = new System.Drawing.Size(760, 1000);
+            cartesianChart1.Dock = System.Windows.Forms.DockStyle.Fill;
+            cartesianChart1.Location = new System.Drawing.Point(0, 0);
+            cartesianChart1.Series = new SeriesCollection
             {
-                File.Delete(t)
-;
-            }
+                new StackedColumnSeries
+                {
+                    Values = new ChartValues<double> {4, 5, 6, 8},
+                    StackMode = StackMode.Values, // this is not necessary, values is the default stack mode
+                    DataLabels = true
+                },
+                new StackedColumnSeries
+                {
+                    Values = new ChartValues<double> {2, 5, 6, 7},
+                    StackMode = StackMode.Values,
+                    DataLabels = true
+                }
+            };
 
-            var ls = f.ReadAllText().Split('\n').Where(i => i.IsReadable()).Select(i => i.Trim()).OrderBy(i => i);
-
-            var sumList = ls.Select(i => i.Split(new char[] { ' ' }, 2).Last().Split(',').Select(iv => int.Parse(iv)).Sum());
-
-            t.AppendAllText(string.Format("# 湖北快3 2015年11月3日至2018年6月9日共 {0} 期开奖统计" + Environment.NewLine + Environment.NewLine, ls.Count().ToString()));
-            var evenDictionary = new Dictionary<string, int>();
-            var seqDictionary = new Dictionary<string, int>();
-            var sumDictionary = new Dictionary<int, int>();
-
-            evenDictionary.Add("大双", 0);
-            evenDictionary.Add("小双", 0);
-            evenDictionary.Add("大单", 0);
-            evenDictionary.Add("小单", 0);
-            seqDictionary.Add("三同号", 0);
-            seqDictionary.Add("连号", 0);
-
-
-            foreach (var sum in sumList)
+            //adding series updates and animates the chart
+            cartesianChart1.Series.Add(new StackedColumnSeries
             {
+                Values = new ChartValues<double> { 6, 2, 7 },
+                StackMode = StackMode.Values
+            });
 
-                if (sum > 10)
-                {
-                    if (sum % 2 == 0)
-                    {
-                        evenDictionary["大双"] += 1;
-                    }
-                    else
-                    {
-                        evenDictionary["大单"] += 1;
+            //adding values also updates and animates
+            cartesianChart1.Series[2].Values.Add(4d);
 
-                    }
-                }
-                else
-                {
-                    if (sum % 2 == 0)
-                    {
-                        evenDictionary["小双"] += 1;
-                    }
-                    else
-                    {
-                        evenDictionary["小单"] += 1;
-
-                    }
-                }
-
-                //if (type == "三同号")
-                //{
-                //    seqDictionary["三同号"] += 1;
-
-                //}
-                //else if (type == "连号")
-                //{
-                //    seqDictionary["连号"] += 1;
-                //}
-                if (sumDictionary.Keys.Contains(sum))
-                {
-                    sumDictionary[sum] += 1;
-                }
-                else
-                {
-                    sumDictionary.Add(sum, 1);
-
-                }
-            }
-
-
-
-            var sb = new StringBuilder();
-
-            foreach (var item in evenDictionary)
+            cartesianChart1.AxisX.Add(new Axis
             {
-                sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, item.Key, item.Value, Math.Round((item.Value) / (double)ls.Count() * 100, 3));
-            }
+                Title = "Browser",
+                Labels = new[] { "Chrome", "Mozilla", "Opera", "IE" },
+                Separator = DefaultAxes.CleanSeparator
+            });
 
-            sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, "双", evenDictionary["大双"] + evenDictionary["小双"], Math.Round((evenDictionary["大双"] + evenDictionary["小双"]) / (double)ls.Count() * 100, 3));
-            sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, "单", evenDictionary["大单"] + evenDictionary["小单"], Math.Round((evenDictionary["大单"] + evenDictionary["小单"]) / (double)ls.Count() * 100, 3));
-            sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, "大", evenDictionary["大双"] + evenDictionary["大单"], Math.Round((evenDictionary["大双"] + evenDictionary["大单"]) / (double)ls.Count() * 100, 3));
-            sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, "小", evenDictionary["小单"] + evenDictionary["小双"], Math.Round((evenDictionary["小单"] + evenDictionary["小双"]) / (double)ls.Count() * 100, 3));
-            sb.AppendLine();
-            sb.AppendLine();
-
-
-
-            sb.AppendLine().AppendLine("## 和值").AppendLine();
-
-            sumDictionary = sumDictionary.OrderByDescending(i => i.Value).ThenBy(i => i.Key).ToDictionary(i => i.Key, i => i.Value);
-            foreach (var item in sumDictionary)
+            cartesianChart1.AxisY.Add(new Axis
             {
-                sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, item.Key, item.Value, Math.Round((item.Value) / (double)ls.Count() * 100, 3));
-            }
+                Title = "Usage",
+                LabelFormatter = value => value + " Mill"
+            });
 
+            var bitmap = ImageHelper.GetBitmap(760, 1000);
+            cartesianChart1.DrawToBitmap(bitmap, cartesianChart1.Bounds);
 
-            AnalysisSum(sumDictionary, sumList, sb);
-            AnalysisHuBeiK3EvenBig(sumList, sb);
-            AnalysisHuBeiK3EvenSmall(sumList, sb);
-
-            AnalysisHuBeiK3OddBig(sumList, sb);
-            AnalysisHuBeiK3OddSmall(sumList, sb);
+            ImageHelper.SaveJpegWithCompression(bitmap, "hbk3.jpg".GetDesktopPath(), 95);
 
 
 
 
-            //foreach (var item in seqDictionary)
+            //t.AppendAllText(string.Format("# 湖北快3 2015年11月3日至2018年6月9日共 {0} 期开奖统计" + Environment.NewLine + Environment.NewLine, ls.Count().ToString()));
+            //var evenDictionary = new Dictionary<string, int>();
+            //var seqDictionary = new Dictionary<string, int>();
+            //var sumDictionary = new Dictionary<int, int>();
+
+            //evenDictionary.Add("大双", 0);
+            //evenDictionary.Add("小双", 0);
+            //evenDictionary.Add("大单", 0);
+            //evenDictionary.Add("小单", 0);
+            //seqDictionary.Add("三同号", 0);
+            //seqDictionary.Add("连号", 0);
+
+
+            //foreach (var sum in sumList)
             //{
-            //    sb.AppendFormat("{0}：开奖 {1} 次，{2}%" + Environment.NewLine, item.Key, item.Value, Math.Round((item.Value) / (double)ls.Count() * 100, 3));
+
+            //    if (sum > 10)
+            //    {
+            //        if (sum % 2 == 0)
+            //        {
+            //            evenDictionary["大双"] += 1;
+            //        }
+            //        else
+            //        {
+            //            evenDictionary["大单"] += 1;
+
+            //        }
+            //    }
+            //    else
+            //    {
+            //        if (sum % 2 == 0)
+            //        {
+            //            evenDictionary["小双"] += 1;
+            //        }
+            //        else
+            //        {
+            //            evenDictionary["小单"] += 1;
+
+            //        }
+            //    }
+
+            //    //if (type == "三同号")
+            //    //{
+            //    //    seqDictionary["三同号"] += 1;
+
+            //    //}
+            //    //else if (type == "连号")
+            //    //{
+            //    //    seqDictionary["连号"] += 1;
+            //    //}
+            //    if (sumDictionary.Keys.Contains(sum))
+            //    {
+            //        sumDictionary[sum] += 1;
+            //    }
+            //    else
+            //    {
+            //        sumDictionary.Add(sum, 1);
+
+            //    }
             //}
 
-            t.AppendAllText(sb.ToString());
+
+
+            //var sb = new StringBuilder();
+
+            //foreach (var item in evenDictionary)
+            //{
+            //    sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, item.Key, item.Value, Math.Round((item.Value) / (double)ls.Count() * 100, 3));
+            //}
+
+            //sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, "双", evenDictionary["大双"] + evenDictionary["小双"], Math.Round((evenDictionary["大双"] + evenDictionary["小双"]) / (double)ls.Count() * 100, 3));
+            //sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, "单", evenDictionary["大单"] + evenDictionary["小单"], Math.Round((evenDictionary["大单"] + evenDictionary["小单"]) / (double)ls.Count() * 100, 3));
+            //sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, "大", evenDictionary["大双"] + evenDictionary["大单"], Math.Round((evenDictionary["大双"] + evenDictionary["大单"]) / (double)ls.Count() * 100, 3));
+            //sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, "小", evenDictionary["小单"] + evenDictionary["小双"], Math.Round((evenDictionary["小单"] + evenDictionary["小双"]) / (double)ls.Count() * 100, 3));
+            //sb.AppendLine();
+            //sb.AppendLine();
+
+
+
+            //sb.AppendLine().AppendLine("## 和值").AppendLine();
+
+            //sumDictionary = sumDictionary.OrderByDescending(i => i.Value).ThenBy(i => i.Key).ToDictionary(i => i.Key, i => i.Value);
+            //foreach (var item in sumDictionary)
+            //{
+            //    sb.AppendFormat("- {0}：开奖 {1} 次，{2}%" + Environment.NewLine, item.Key, item.Value, Math.Round((item.Value) / (double)ls.Count() * 100, 3));
+            //}
+
+
+            //AnalysisSum(sumDictionary, sumList, sb);
+            //AnalysisHuBeiK3EvenBig(sumList, sb);
+            //AnalysisHuBeiK3EvenSmall(sumList, sb);
+
+            //AnalysisHuBeiK3OddBig(sumList, sb);
+            //AnalysisHuBeiK3OddSmall(sumList, sb);
+
+
+
+
+            ////foreach (var item in seqDictionary)
+            ////{
+            ////    sb.AppendFormat("{0}：开奖 {1} 次，{2}%" + Environment.NewLine, item.Key, item.Value, Math.Round((item.Value) / (double)ls.Count() * 100, 3));
+            ////}
+
+            //t.AppendAllText(sb.ToString());
         }
     }
 }

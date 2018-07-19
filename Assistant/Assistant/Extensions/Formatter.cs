@@ -1,14 +1,39 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Collections;
 
 namespace Helpers
 {
 
-
     static class Formatter
     {
+
+        public static string RemoveComments(string value)
+        {
+
+            var blockComments = @"/\*(.*?)\*/";
+            var lineComments = @"//(.*?)\r?\n";
+            var strings = @"""((\\[^\n]|[^""\n])*)""";
+            var verbatimStrings = @"@(""[^""]*"")+";
+            string noComments = Regex.Replace(value,
+    blockComments + "|" + lineComments + "|" + strings + "|" + verbatimStrings,
+    me =>
+    {
+        if (me.Value.StartsWith("/*") || me.Value.StartsWith("//"))
+            return me.Value.StartsWith("//") ? Environment.NewLine : "";
+        // Keep the literal strings
+        return me.Value;
+    },
+    RegexOptions.Singleline);
+            return Regex.Replace(noComments, "[\r\n]+", Environment.NewLine);
+        }
+
+        public const string ChineseZodiac = "鼠牛虎兔龙蛇马羊猴鸡狗猪";
+
         public static string FormatNginxConf(string value)
         {
             var sb = new StringBuilder();
@@ -111,7 +136,8 @@ namespace Helpers
             //    ls.Add(firstLine.)
 
             //}
-            return ls.Select(i => i.Split(new char[] { '{' }, 2).First().Trim() + ";").OrderBy(i => i.Trim());
+            return ls;
+            //return ls.Select(i => i.Split(new char[] { '{' }, 2).First().Trim() + ";").OrderBy(i => i.Trim());
 
         }
 
